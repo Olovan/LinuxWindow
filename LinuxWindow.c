@@ -49,30 +49,30 @@ void renderTriangle(float angle)
 
     glBegin(GL_TRIANGLE_FAN); //Draw Pyramid
     glColor3f(sin(angle / 40), sin(angle / 30), 1); //Vert 1
-    glVertex3f(-.5, -.433, -.433);
+    glVertex3f(-.5, -.333, -.333);
 
-    glColor3f(1, sin((angle + 70)/300), cos(angle / 80)); //Vert 2
-    glVertex3f(0, .433, -.433);
+    glColor3f(1, sin((angle + 70)/45), cos(angle / 80)); //Vert 2
+    glVertex3f(0, .533, -.333);
 
     glColor3f(sin(angle / 30), cos(angle / 50), 1);  //Vert 3
-    glVertex3f(.5, -.433, -.433);
+    glVertex3f(.5, -.333, -.333);
 
     glColor3f(sin((angle + 90)/40), 1, cos(angle / 60));  //Vert 4
-    glVertex3f(0, 0, .433);
+    glVertex3f(0, 0, .533);
 
-    glColor3f(1, sin((angle + 70)/300), cos(angle / 80)); //Vert 2
-    glVertex3f(0, .433, -.433);
+    glColor3f(1, sin((angle + 70)/45), cos(angle / 80)); //Vert 2
+    glVertex3f(0, .533, -.333);
     glEnd();
 
     glBegin(GL_TRIANGLES); //Cover up the Open Side of the Triangle
-    glColor3f(1, sin((angle + 70)/300), cos(angle / 80)); //Vert 2
-    glVertex3f(0, .433, -.433);
+    glColor3f(1, sin((angle + 70)/45), cos(angle / 80)); //Vert 2
+    glVertex3f(0, .533, -.333);
 
     glColor3f(sin(angle / 30), cos(angle / 50), 1);  //Vert 3
-    glVertex3f(.5, -.433, -.433);
+    glVertex3f(.5, -.333, -.333);
 
     glColor3f(sin((angle + 90)/40), 1, cos(angle / 60));  //Vert 4
-    glVertex3f(0, 0, .433);
+    glVertex3f(0, 0, .533);
     glEnd();
 }
 
@@ -127,7 +127,7 @@ int main(int argc, char *argv[])
     glClearColor(0, 0, 0, 0);
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
-    gluLookAt(0, 0, 2.5, 0, 0, 0, 0, 1, 0);
+    gluLookAt(0, 0, 4.5, 0, 0, 0, 0, 1, 0);
 
     int windowShouldClose = 0;
     float angle = 0;
@@ -152,15 +152,14 @@ int main(int argc, char *argv[])
                     double smallSide = (w > h ? h : w); 
                     glMatrixMode(GL_PROJECTION);
                     glLoadIdentity();
-                    //glFrustum( -w / smallSide, w / smallSide, -h / smallSide, h / smallSide, .1, 100);
-                    gluPerspective(45, (double)w/h, .01, 10);
+                    gluPerspective(30, (double)w/h, .01, 10);
                     break;
 
                 case KeyPress: //Key was Pressed
                     if( xevent.xkey.keycode == 0x09 )   //Escape Key Pressed
                         windowShouldClose = 1;
 
-                    printf("Pressed Keycode: %x\n", xevent.xkey.keycode);
+                    //printf("Pressed Keycode: %x\n", xevent.xkey.keycode);
                     break;
 
                 case ClientMessage:
