@@ -1,7 +1,8 @@
 #include <stdio.h>      //console output
 #include <stdlib.h>     //exit function
+#include <time.h>       //nanosleep
 #include <X11/X.h>      //Window Stuff
-//include <X11/Xlib.h>   //More Window Stuff
+#include <X11/Xlib.h>   //More Window Stuff
 #include <GL/gl.h>      //OpenGL core functions
 #include <GL/glu.h>     //OpenGL utility functions
 #include <GL/glx.h>     //OpenGL Window Stuff
@@ -18,21 +19,24 @@ XEvent                 xevent;     //Used to query window for events
 
 //OpenGL Context Attributes we want
 GLint     desiredAttribs[] = { GLX_RGBA,    
-                               GLX_DEPTH_SIZE, 24, 
-                               GLX_DOUBLEBUFFER, 
-                               None }; 
+    GLX_DEPTH_SIZE, 24, 
+    GLX_DOUBLEBUFFER, 
+    None }; 
 
-void renderTriangle()
+void renderTriangle(float angle)
 {
+    glMatrixMode(GL_MODELVIEW);
+    glRotatef(angle, 0, 0, 1);
+
     glBegin(GL_TRIANGLES); //Draw Triangle
-        glColor3f(1, 0, 0);
-        glVertex2f(-1, -1);
+    glColor3f(1, 0, 0);
+    glVertex2f(-1, -1);
 
-        glColor3f(0, 1, 0);
-        glVertex2f(0, 1);
+    glColor3f(0, 1, 0);
+    glVertex2f(0, 1);
 
-        glColor3f(0, 0, 1);
-        glVertex2f(1, -1);
+    glColor3f(0, 0, 1);
+    glVertex2f(1, -1);
     glEnd();
 }
 
@@ -43,55 +47,90 @@ int main(int argc, char *argv[])
 
     root = DefaultRootWindow(display); //Make our Base window
 
-    vi = glXChooseVisual(display, 0, desiredAttribs); //Find a Visual ID that has what we want
+    //Non-Transparent Test
+    //vi = glXChooseVisual(display, 0, desiredAttribs); //Find a Visual ID that has what we want
+
+    //TRANSPARENT WINDOW TEST
+    XVisualInfo transparentInfo;
+    vi = &transparentInfo;
+    XMatchVisualInfo(display, DefaultScreen(display), 32, TrueColor, vi);
+
     if( vi == NULL ) { printf("Desired Visual Attributes not supported\n"); exit(0); } //Make sure it worked
 
     cmap = XCreateColormap(display, root, vi->visual, AllocNone);
     swa.colormap    =  cmap;
     swa.event_mask  =  ExposureMask | KeyPressMask; //Only Events we care about
+    swa.background_pixmap = None;                   //Required for Transparency
+    swa.border_pixel = 0;                           //Required for Transparency
 
     win = XCreateWindow(display,                   //Which Computer
-                        root,                      //Parent Window
-                        0, 0,                      //Topleft corner pos (relative)
-                        800, 600,                  //Width and Height
-                        0,                         //Border Width
-                        vi->depth,                 //Window Depth
-                        InputOutput,               //Window Type
-                        vi->visual,                //Visual Info Stuff like Color Depth and such
-                        CWColormap | CWEventMask,  //Tell it which fields we have filled out ourselves
-                        &swa);                     //Pointer to attributes
+            root,                      //Parent Window
+            0, 0,                      //Topleft corner pos (relative)
+            800, 600,                  //Width and Height
+            0,                         //Border Width
+            vi->depth,                 //Window Depth
+            InputOutput,               //Window Type
+            vi->visual,                //Visual Info Stuff like Color Depth and such
+            CWColormap | CWEventMask | CWBackPixmap | CWBorderPixel,  //Tell it which fields we have filled out ourselves
+            &swa);                     //Pointer to attributes
 
     XMapWindow(display, win); //Show the Window
     XStoreName(display, win, "Linux Window Example"); //Set Window Title
-    
+
     glContext = glXCreateContext(display, vi, NULL, GL_TRUE); //Create OpenGL Context
     glXMakeCurrent(display, win, glContext); //Make it our current OpenGL Context
 
+    //Tell the Window Manager that we want to know about close events
+    Atom wmCloseEvent = XInternAtom(display, "WM_DELETE_WINDOW", False); //Find the Atom identify the close event
+    XSetWMProtocols(display, win, &wmCloseEvent, 1); //Register that we care about the close event
+
+    //OpenGL Settings
+    glClearColor(0, 0, 0, 0);
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+
     int windowShouldClose = 0;
+    float angle = 0;
     while( !windowShouldClose ) //Event Loop
     {
-        XNextEvent(display, &xevent); //Blocks until we get an event
 
-        switch(xevent.type)
+        glClear(GL_COLOR_BUFFER_BIT);
+        renderTriangle(1);
+        glXSwapBuffers(display, win);
+
+        //Process Events if there are any to process
+        while(XEventsQueued(display, QueuedAlready) > 0)
         {
-            case Expose: //Called Once Every Monitor Refresh
-                XGetWindowAttributes(display, win, &winAttribs);
-                glViewport(0, 0, winAttribs.width, winAttribs.height); //Fill up full window size
-                glClear(GL_COLOR_BUFFER_BIT);
-                renderTriangle();
-                glXSwapBuffers(display, win);
-                break;
+            XNextEvent(display, &xevent); //Blocks until we get an event
+            switch(xevent.type)
+            {
+                case Expose: //Called When Window Resized or damaged
+                    XGetWindowAttributes(display, win, &winAttribs);
+                    glViewport(0, 0, winAttribs.width, winAttribs.height); //Fill up full window size
+                    //glClear(GL_COLOR_BUFFER_BIT);
+                    //renderTriangle(++angle);
+                    //glXSwapBuffers(display, win);
+                    break;
 
-            case KeyPress: //Key was Pressed
-                if( xevent.xkey.keycode == 0x09 )   //Escape Key Pressed
-                    windowShouldClose = 1;
+                case KeyPress: //Key was Pressed
+                    if( xevent.xkey.keycode == 0x09 )   //Escape Key Pressed
+                        windowShouldClose = 1;
 
-                printf("Pressed Keycode: %x\n", xevent.xkey.keycode);
-                break;
+                    printf("Pressed Keycode: %x\n", xevent.xkey.keycode);
+                    break;
 
-            default:
-                break;
+                case ClientMessage:
+                    if((Atom)xevent.xclient.data.l[0] == wmCloseEvent)
+                        windowShouldClose = 1;
+                default:
+                    break;
+            }
         }
+
+        //Sleep
+        struct timespec waitTime, remainingTime;
+        waitTime.tv_nsec = 16666666;
+        nanosleep(&waitTime, &remainingTime);
     }
 
     //CLEANUP
