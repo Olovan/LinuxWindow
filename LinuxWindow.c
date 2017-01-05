@@ -139,7 +139,7 @@ int main(int argc, char *argv[])
         glXSwapBuffers(display, win);
 
         //Process Events if there are any to process
-        while(XEventsQueued(display, QueuedAlready) > 0)
+        while(XPending(display) > 0)
         {
             XNextEvent(display, &xevent); //Blocks until we get an event
             switch(xevent.type)
