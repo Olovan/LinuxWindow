@@ -48,7 +48,7 @@ void renderTriangle(float angle)
     glMultMatrixf(modelMatrix);
 
     glBegin(GL_TRIANGLE_FAN); //Draw Pyramid
-    glColor3f(sin(angle / 40), sin(angle / 30), 1); //Vert 1
+    glColor3f(cos(angle / 40), sin(angle / 30) / 2 + .5, 1); //Vert 1
     glVertex3f(-.5, -.333, -.333);
 
     glColor3f(1, sin((angle + 70)/45), cos(angle / 80)); //Vert 2
@@ -147,12 +147,9 @@ int main(int argc, char *argv[])
                 case Expose: //Called When Window Resized or damaged
                     XGetWindowAttributes(display, win, &winAttribs);
                     glViewport(0, 0, winAttribs.width, winAttribs.height); //Fill up full window size
-                    int h = winAttribs.height;
-                    int w = winAttribs.width;
-                    double smallSide = (w > h ? h : w); 
                     glMatrixMode(GL_PROJECTION);
                     glLoadIdentity();
-                    gluPerspective(30, (double)w/h, .01, 10);
+                    gluPerspective(30, (double)winAttribs.width/winAttribs.height, .01, 10);
                     break;
 
                 case KeyPress: //Key was Pressed
@@ -172,7 +169,7 @@ int main(int argc, char *argv[])
 
         //Sleep
         struct timespec waitTime, remainingTime;
-        waitTime.tv_nsec = 1./60 * 1e9;
+        waitTime.tv_nsec = (double)1/60 * 1e9; //Limit to 60 FPS
         nanosleep(&waitTime, &remainingTime);
     }
 
