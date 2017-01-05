@@ -1,6 +1,7 @@
 #include <stdio.h>      //console output
 #include <stdlib.h>     //exit function
 #include <time.h>       //nanosleep
+#include <math.h>       //sin, cos
 #include <X11/X.h>      //Window Stuff
 #include <X11/Xlib.h>   //More Window Stuff
 #include <GL/gl.h>      //OpenGL core functions
@@ -17,6 +18,13 @@ GLXContext             glContext;  //Our OpenGL context
 XWindowAttributes      winAttribs; //Struct we fill when we query the state of the Window
 XEvent                 xevent;     //Used to query window for events
 
+
+
+float modelMatrix[16] = {1, 0, 0, 0,
+                         0, 1, 0, 0,
+                         0, 0, 1, 0,
+                         0, 0, 0, 1};
+
 //OpenGL Context Attributes we want
 GLint     desiredAttribs[] = { GLX_RGBA,    
     GLX_DEPTH_SIZE, 24, 
@@ -26,17 +34,45 @@ GLint     desiredAttribs[] = { GLX_RGBA,
 void renderTriangle(float angle)
 {
     glMatrixMode(GL_MODELVIEW);
-    glRotatef(angle, 0, 0, 1);
 
-    glBegin(GL_TRIANGLES); //Draw Triangle
-    glColor3f(1, 0, 0);
-    glVertex2f(-1, -1);
+    //Update Model Matrix
+    glPushMatrix(); 
+    glLoadMatrixf(modelMatrix);
+    glRotatef(sin(angle / 180), 0, 0, 1);
+    glRotatef(cos(angle / 120), 0, 1, 0);
+    glRotatef(sin(angle / 60), 1, 0, 0);
+    glGetFloatv(GL_MODELVIEW_MATRIX, modelMatrix);
+    glPopMatrix();
 
-    glColor3f(0, 1, 0);
-    glVertex2f(0, 1);
+    glPushMatrix();
+    glMultMatrixf(modelMatrix);
 
-    glColor3f(0, 0, 1);
-    glVertex2f(1, -1);
+    glBegin(GL_TRIANGLE_FAN); //Draw Pyramid
+    glColor3f(sin(angle / 40), sin(angle / 30), 1); //Vert 1
+    glVertex3f(-.5, -.433, -.433);
+
+    glColor3f(1, sin((angle + 70)/300), cos(angle / 80)); //Vert 2
+    glVertex3f(0, .433, -.433);
+
+    glColor3f(sin(angle / 30), cos(angle / 50), 1);  //Vert 3
+    glVertex3f(.5, -.433, -.433);
+
+    glColor3f(sin((angle + 90)/40), 1, cos(angle / 60));  //Vert 4
+    glVertex3f(0, 0, .433);
+
+    glColor3f(1, sin((angle + 70)/300), cos(angle / 80)); //Vert 2
+    glVertex3f(0, .433, -.433);
+    glEnd();
+
+    glBegin(GL_TRIANGLES); //Cover up the Open Side of the Triangle
+    glColor3f(1, sin((angle + 70)/300), cos(angle / 80)); //Vert 2
+    glVertex3f(0, .433, -.433);
+
+    glColor3f(sin(angle / 30), cos(angle / 50), 1);  //Vert 3
+    glVertex3f(.5, -.433, -.433);
+
+    glColor3f(sin((angle + 90)/40), 1, cos(angle / 60));  //Vert 4
+    glVertex3f(0, 0, .433);
     glEnd();
 }
 
@@ -66,7 +102,7 @@ int main(int argc, char *argv[])
     win = XCreateWindow(display,                   //Which Computer
             root,                      //Parent Window
             0, 0,                      //Topleft corner pos (relative)
-            800, 600,                  //Width and Height
+            800, 800,                  //Width and Height
             0,                         //Border Width
             vi->depth,                 //Window Depth
             InputOutput,               //Window Type
@@ -85,17 +121,21 @@ int main(int argc, char *argv[])
     XSetWMProtocols(display, win, &wmCloseEvent, 1); //Register that we care about the close event
 
     //OpenGL Settings
+    glEnable(GL_BLEND);
+    glEnable(GL_DEPTH_TEST);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glClearColor(0, 0, 0, 0);
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
+    gluLookAt(0, 0, 2.5, 0, 0, 0, 0, 1, 0);
 
     int windowShouldClose = 0;
     float angle = 0;
     while( !windowShouldClose ) //Event Loop
     {
 
-        glClear(GL_COLOR_BUFFER_BIT);
-        renderTriangle(1);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        renderTriangle(angle++);
         glXSwapBuffers(display, win);
 
         //Process Events if there are any to process
@@ -107,9 +147,13 @@ int main(int argc, char *argv[])
                 case Expose: //Called When Window Resized or damaged
                     XGetWindowAttributes(display, win, &winAttribs);
                     glViewport(0, 0, winAttribs.width, winAttribs.height); //Fill up full window size
-                    //glClear(GL_COLOR_BUFFER_BIT);
-                    //renderTriangle(++angle);
-                    //glXSwapBuffers(display, win);
+                    int h = winAttribs.height;
+                    int w = winAttribs.width;
+                    double smallSide = (w > h ? h : w); 
+                    glMatrixMode(GL_PROJECTION);
+                    glLoadIdentity();
+                    //glFrustum( -w / smallSide, w / smallSide, -h / smallSide, h / smallSide, .1, 100);
+                    gluPerspective(45, (double)w/h, .01, 10);
                     break;
 
                 case KeyPress: //Key was Pressed
@@ -129,7 +173,7 @@ int main(int argc, char *argv[])
 
         //Sleep
         struct timespec waitTime, remainingTime;
-        waitTime.tv_nsec = 16666666;
+        waitTime.tv_nsec = 1./60 * 1e9;
         nanosleep(&waitTime, &remainingTime);
     }
 
