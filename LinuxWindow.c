@@ -170,6 +170,7 @@ int main(int argc, char *argv[])
         //Sleep
         struct timespec waitTime, remainingTime;
         waitTime.tv_nsec = (double)1/60 * 1e9; //Limit to 60 FPS
+	waitTime.tv_sec = 0;
         nanosleep(&waitTime, &remainingTime);
     }
 
